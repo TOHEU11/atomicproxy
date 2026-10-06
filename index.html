@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AtomicProxy — Browse freely</title>
+<style>
+:root{--bg:#070b16;--text:#eef4ff;--muted:#91a0ba;--line:rgba(255,255,255,.1);--accent:#34d399;--good:#4ade80}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;color:var(--text);
+background:radial-gradient(circle at 20% 10%,rgba(52,211,153,.24),transparent 34%),radial-gradient(circle at 85% 80%,rgba(16,185,129,.2),transparent 34%),var(--bg);display:flex;flex-direction:column}
+header{display:flex;justify-content:space-between;align-items:center;padding:22px 6%}
+.logo{font-size:22px;font-weight:850;letter-spacing:-.5px}.logo span{color:var(--accent);text-shadow:0 0 18px rgba(52,211,153,.7)}
+.pill{font-size:12px;padding:7px 11px;border-radius:999px;background:rgba(74,222,128,.12);color:var(--good);border:1px solid rgba(74,222,128,.3)}
+main{flex:1;display:grid;place-items:center;padding:20px}
+.wrap{width:min(720px,100%);text-align:center}
+h1{font-size:clamp(38px,7vw,68px);line-height:.95;letter-spacing:-2px;margin:0 0 14px}
+p.sub{color:var(--muted);font-size:17px;line-height:1.6;margin:0 0 30px}
+.bar{display:flex;gap:10px;padding:8px;background:rgba(17,25,45,.8);border:1px solid var(--line);border-radius:18px;backdrop-filter:blur(18px);box-shadow:0 0 0 1px rgba(52,211,153,.25),0 0 40px rgba(52,211,153,.28),0 24px 70px rgba(0,0,0,.35)}
+.bar input{flex:1;min-width:0;background:transparent;border:0;color:var(--text);font:inherit;font-size:16px;padding:12px 14px;outline:0}
+.go{border:0;border-radius:12px;padding:12px 24px;background:var(--accent);color:#04130c;font-weight:800;font-size:15px;cursor:pointer;box-shadow:0 0 22px rgba(52,211,153,.55)}
+.go:hover{filter:brightness(1.08)}.go:focus-visible,.tile:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:22px}
+.tile{padding:18px 8px;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:16px;color:var(--text);font:inherit;font-weight:700;cursor:pointer;transition:.2s}
+.tile:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 0 24px rgba(52,211,153,.35)}
+.tile span{display:block;font-size:26px;margin-bottom:6px}
+.load{display:none;margin-top:26px;text-align:left;background:#050913;border:1px solid var(--line);border-radius:15px;padding:16px;font-family:ui-monospace,monospace;font-size:13px;color:#86efc4;min-height:96px}
+.load.show{display:block}
+.track{height:5px;background:rgba(255,255,255,.08);border-radius:9px;margin-top:12px;overflow:hidden}
+.track i{display:block;height:100%;width:0;background:var(--accent);box-shadow:0 0 12px var(--accent);transition:width .5s}
+footer{text-align:center;color:#71809b;font-size:12px;padding:22px}
+.reveal{position:fixed;inset:0;background:rgba(3,6,14,.8);backdrop-filter:blur(8px);display:none;place-items:center;z-index:20;padding:20px}
+.reveal.show{display:grid}
+.reveal div{max-width:420px;text-align:center;background:#11192d;border:1px solid var(--line);border-radius:22px;padding:34px}
+.reveal h2{font-size:34px;margin:0 0 10px;letter-spacing:-1px}.reveal p{color:var(--muted);line-height:1.6;margin:0 0 22px}
+@media(max-width:560px){.tiles{grid-template-columns:repeat(2,1fr)}.bar{flex-direction:column}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Atomic<span>Proxy</span></div>
+  <div class="pill">● Servers online</div>
+</header>
+<main>
+  <div class="wrap">
+    <h1>Browse<br>freely.</h1>
+    <p class="sub">Enter any address and we'll fetch it for you, fast and private.</p>
+    <div class="bar">
+      <input id="url" type="text" placeholder="Enter a website or search…" aria-label="Website address" autocomplete="off" onkeydown="if(event.key==='Enter')go()">
+      <button class="go" onclick="go()">Go</button>
+    </div>
+    <div class="tiles">
+      <button class="tile" onclick="go()"><span>🔎</span>Search</button>
+      <button class="tile" onclick="go()"><span>🎬</span>Video</button>
+      <button class="tile" onclick="go()"><span>🎵</span>Music</button>
+      <button class="tile" onclick="go()"><span>🎮</span>Games</button>
+    </div>
+    <div class="load" id="load" aria-live="polite"><div id="log"></div><div class="track"><i id="bar"></i></div></div>
+  </div>
+</main>
+<footer>AtomicProxy • Fast. Private. Unblocked.</footer>
+
+<div class="reveal" id="reveal" role="dialog" aria-modal="true">
+  <div>
+    <h2>Gotcha 😄</h2>
+    <p>This proxy isn't real. Nothing was fetched and nothing was hidden. No info was collected or sent anywhere.</p>
+    <button class="go" onclick="document.getElementById('reveal').classList.remove('show')">Okay, you got me</button>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const steps=["Resolving host…","Opening secure channel…","Routing through edge node…","Fetching page…"];
+let busy=false;
+function go(){
+  if(busy) return; busy=true;
+  $("load").classList.add("show"); $("log").innerHTML=""; $("bar").style.width="0";
+  steps.forEach((t,i)=>setTimeout(()=>{
+    const d=document.createElement("div"); d.textContent="› "+t; $("log").appendChild(d);
+    $("bar").style.width=((i+1)/steps.length*90)+"%";
+  },i*700));
+  setTimeout(()=>{
+    $("bar").style.width="100%";
+    $("reveal").classList.add("show"); busy=false;
+  },steps.length*700+300);
+}
+</script>
+</body>
+</html>
